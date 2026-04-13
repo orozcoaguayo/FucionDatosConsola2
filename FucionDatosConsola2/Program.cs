@@ -1,14 +1,10 @@
-﻿// PROGRAMA COMPLETO ORIGINAL + MEJORAS (CSV, JSON, TXT, XML)
-// Incluye TODAS tus funciones + generación de nuevos formatos
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using Microsoft.Data.SqlClient;
 using System.Linq;
 using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Xml.Serialization;
 
 namespace FucionDatosConsola2
 {
@@ -16,7 +12,10 @@ namespace FucionDatosConsola2
     {
         static string connectionString = "Server=localhost\\SQLEXPRESS;Database=FucionDatosDB;Trusted_Connection=True;TrustServerCertificate=True;";
         static List<DataItem> lista = new List<DataItem>();
-        static string rutaCarpeta = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), "Datos_Proyecto");
+
+        static string rutaCarpeta = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+            "Datos_Proyecto");
 
         static void Main(string[] args)
         {
@@ -26,20 +25,24 @@ namespace FucionDatosConsola2
             while (!salir)
             {
                 Console.Clear();
-                Console.WriteLine("===== DATA FUSION ARENA =====");
-                Console.WriteLine("1. Cargar desde SQL");
-                Console.WriteLine("2. Mostrar Tabla");
-                Console.WriteLine("3. Gráfica");
-                Console.WriteLine("4. Resumen");
-                Console.WriteLine("5. Filtrar >50");
-                Console.WriteLine("6. Ordenar");
-                Console.WriteLine("7. Insertar en SQL");
-                Console.WriteLine("8. Detectar duplicados");
-                Console.WriteLine("9. Generar archivos (CSV, JSON, TXT, XML)");
+                Console.WriteLine("====================================================");
+                Console.WriteLine("       DATA FUSION ARENA - SISTEMA INTEGRADO        ");
+                Console.WriteLine("====================================================");
+                Console.WriteLine("1.  Cargar desde SQL Server");
+                Console.WriteLine("2.  Mostrar Tabla");
+                Console.WriteLine("3.  Ver Gráfica");
+                Console.WriteLine("4.  Ver Resumen");
+                Console.WriteLine("5.  Filtrar > 50");
+                Console.WriteLine("6.  Ordenar (Bubble Sort)");
+                Console.WriteLine("7.  Insertar en SQL");
+                Console.WriteLine("8.  Detectar Duplicados");
+                Console.WriteLine("----------------------------------------------------");
+                Console.WriteLine("9.  Generar 10,000 datos");
                 Console.WriteLine("10. Cargar CSV");
                 Console.WriteLine("11. Cargar JSON");
                 Console.WriteLine("12. Limpiar lista");
-                Console.WriteLine("0. Salir");
+                Console.WriteLine("0.  Salir");
+                Console.WriteLine("====================================================");
 
                 string opcion = Console.ReadLine();
 
@@ -56,15 +59,16 @@ namespace FucionDatosConsola2
                     case "9": GenerarArchivosMasivos(); break;
                     case "10": CargarDesdeCSV(); break;
                     case "11": CargarDesdeJSON(); break;
-                    case "12": lista.Clear(); break;
+                    case "12": lista.Clear(); Console.WriteLine("Lista vaciada"); break;
                     case "0": salir = true; break;
                 }
 
+                Console.WriteLine("\nPresiona una tecla...");
                 Console.ReadKey();
             }
         }
 
-        // MODELO
+        // ===== MODELO =====
         public class DataItem
         {
             public int Id { get; set; }
@@ -73,78 +77,93 @@ namespace FucionDatosConsola2
             public double Value { get; set; }
         }
 
-        // SQL
+        // ===== SQL =====
         static void CargarDesdeBD()
         {
-            using SqlConnection conn = new SqlConnection(connectionString);
-            conn.Open();
-            string query = "SELECT Id, Name, Category, Value FROM DataItems";
-            using SqlCommand cmd = new SqlCommand(query, conn);
-            using SqlDataReader reader = cmd.ExecuteReader();
-
-            while (reader.Read())
+            try
             {
-                lista.Add(new DataItem
+                lista.Clear(); // 🔥 IMPORTANTE
+
+                using SqlConnection conn = new SqlConnection(connectionString);
+                conn.Open();
+
+                string query = "SELECT Id, Name, Category, Value FROM DataItems";
+                using SqlCommand cmd = new SqlCommand(query, conn);
+                using SqlDataReader reader = cmd.ExecuteReader();
+
+                int contador = 0;
+
+                while (reader.Read())
                 {
-                    Id = reader.GetInt32(0),
-                    Name = reader.GetString(1),
-                    Category = reader.GetString(2),
-                    Value = reader.GetDouble(3)
-                });
+                    lista.Add(new DataItem
+                    {
+                        Id = reader.GetInt32(0),
+                        Name = reader.GetString(1),
+                        Category = reader.IsDBNull(2) ? "Sin categoría" : reader.GetString(2),
+                        Value = reader.GetDouble(3)
+                    });
+                    contador++;
+                }
+
+                Console.WriteLine($"✔ {contador} registros cargados desde SQL");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error SQL: " + ex.Message);
             }
         }
 
-        // GENERAR ARCHIVOS (CSV, JSON, TXT, XML)
+        // ===== GENERAR ARCHIVOS =====
         static void GenerarArchivosMasivos()
         {
-            if (!Directory.Exists(rutaCarpeta)) Directory.CreateDirectory(rutaCarpeta);
+            if (!Directory.Exists(rutaCarpeta))
+                Directory.CreateDirectory(rutaCarpeta);
 
             int cantidad = 10000;
             string[] cats = { "Tecnologia", "Muebles", "Papeleria" };
             string[] prods = { "Monitor", "Silla", "Lapiz" };
+
             Random rnd = new Random();
 
-            // CSV
             string rutaCSV = Path.Combine(rutaCarpeta, "datos_masivos.csv");
             StringBuilder csv = new StringBuilder("Nombre,Categoria,Valor\n");
+
             for (int i = 1; i <= cantidad; i++)
-                csv.AppendLine($"{prods[rnd.Next(prods.Length)]},{cats[rnd.Next(cats.Length)]},{rnd.Next(100, 5000)}");
+                csv.AppendLine($"{prods[rnd.Next(3)]} {i},{cats[rnd.Next(3)]},{rnd.Next(100, 5000)}");
+
             File.WriteAllText(rutaCSV, csv.ToString());
 
-            // JSON
             string rutaJSON = Path.Combine(rutaCarpeta, "datos_masivos.json");
             var listaJson = new List<DataItem>();
+
             for (int i = 1; i <= cantidad; i++)
-                listaJson.Add(new DataItem { Id = i, Name = "Item" + i, Category = cats[rnd.Next(cats.Length)], Value = rnd.Next(100, 5000) });
+                listaJson.Add(new DataItem
+                {
+                    Name = "Item " + i,
+                    Category = cats[rnd.Next(3)],
+                    Value = rnd.Next(100, 5000)
+                });
+
             File.WriteAllText(rutaJSON, JsonSerializer.Serialize(listaJson, new JsonSerializerOptions { WriteIndented = true }));
 
-            // TXT
-            string rutaTXT = Path.Combine(rutaCarpeta, "datos_masivos.txt");
-            StringBuilder txt = new StringBuilder();
-            for (int i = 1; i <= cantidad; i++)
-                txt.AppendLine($"Producto:{prods[rnd.Next(prods.Length)]}|Categoria:{cats[rnd.Next(cats.Length)]}|Valor:{rnd.Next(100, 5000)}");
-            File.WriteAllText(rutaTXT, txt.ToString());
-
-            // XML
-            string rutaXML = Path.Combine(rutaCarpeta, "datos_masivos.xml");
-            var serializer = new XmlSerializer(typeof(List<DataItem>));
-            using (var writer = new StreamWriter(rutaXML))
-            {
-                serializer.Serialize(writer, listaJson);
-            }
-
-            Console.WriteLine("✔ Archivos CSV, JSON, TXT y XML generados");
+            Console.WriteLine("✔ Archivos generados");
         }
 
-        // CSV
+        // ===== CSV =====
         static void CargarDesdeCSV()
         {
             string ruta = Path.Combine(rutaCarpeta, "datos_masivos.csv");
-            var lineas = File.ReadAllLines(ruta);
 
-            for (int i = 1; i < lineas.Length; i++)
+            if (!File.Exists(ruta))
             {
-                var c = lineas[i].Split(',');
+                Console.WriteLine("No existe CSV");
+                return;
+            }
+
+            foreach (var linea in File.ReadAllLines(ruta).Skip(1))
+            {
+                var c = linea.Split(',');
+
                 if (c.Length < 3) continue;
 
                 lista.Add(new DataItem
@@ -154,18 +173,28 @@ namespace FucionDatosConsola2
                     Value = double.Parse(c[2])
                 });
             }
+
+            Console.WriteLine("CSV cargado");
         }
 
-        // JSON
+        // ===== JSON =====
         static void CargarDesdeJSON()
         {
             string ruta = Path.Combine(rutaCarpeta, "datos_masivos.json");
-            var json = File.ReadAllText(ruta);
-            var datos = JsonSerializer.Deserialize<List<DataItem>>(json);
+
+            if (!File.Exists(ruta))
+            {
+                Console.WriteLine("No existe JSON");
+                return;
+            }
+
+            var datos = JsonSerializer.Deserialize<List<DataItem>>(File.ReadAllText(ruta));
             lista.AddRange(datos);
+
+            Console.WriteLine("JSON cargado");
         }
 
-        // PROCESOS
+        // ===== PROCESAMIENTO =====
         static void Ordenar()
         {
             for (int i = 0; i < lista.Count - 1; i++)
@@ -176,6 +205,8 @@ namespace FucionDatosConsola2
                         lista[i] = lista[j];
                         lista[j] = temp;
                     }
+
+            Console.WriteLine("Ordenado");
         }
 
         static List<DataItem> Filtrar(double min)
@@ -185,60 +216,124 @@ namespace FucionDatosConsola2
 
         static void DetectarDuplicados()
         {
-            Dictionary<string, int> conteo = new Dictionary<string, int>();
+            var dic = new Dictionary<string, int>();
+
             foreach (var d in lista)
             {
-                if (!conteo.ContainsKey(d.Name)) conteo[d.Name] = 0;
-                conteo[d.Name]++;
+                if (!dic.ContainsKey(d.Name)) dic[d.Name] = 0;
+                dic[d.Name]++;
             }
 
-            foreach (var item in conteo.Where(x => x.Value > 1))
-                Console.WriteLine($"Duplicado: {item.Key} ({item.Value})");
+            foreach (var x in dic.Where(x => x.Value > 1))
+                Console.WriteLine($"Duplicado: {x.Key} ({x.Value})");
         }
 
-        // VISUAL
+        // ===== VISUAL =====
         static void MostrarTabla(List<DataItem> datos)
         {
-            Console.WriteLine("ID   NOMBRE        CATEGORIA     VALOR");
-            foreach (var d in datos.Take(20))
-                Console.WriteLine($"{d.Id} {d.Name} {d.Category} {d.Value}");
+            if (datos.Count == 0)
+            {
+                Console.WriteLine("No hay datos para mostrar.");
+                return;
+            }
+
+            var muestra = datos.Take(20).ToList();
+
+            int colId = Math.Max(4, muestra.Max(d => d.Id.ToString().Length));
+            int colNombre = Math.Max(6, muestra.Max(d => (d.Name ?? "").Length));
+            int colCategoria = Math.Max(9, muestra.Max(d => (d.Category ?? "").Length));
+            int colValor = Math.Max(10, muestra.Max(d => d.Value.ToString("C0").Length));
+
+            string lineaHorizontal = $"+{new string('-', colId + 2)}+{new string('-', colNombre + 2)}+{new string('-', colCategoria + 2)}+{new string('-', colValor + 2)}+";
+
+            Console.WriteLine(lineaHorizontal);
+            Console.WriteLine($"| {"ID".PadRight(colId)} | {"NOMBRE".PadRight(colNombre)} | {"CATEGORIA".PadRight(colCategoria)} | {"VALOR".PadLeft(colValor)} |");
+            Console.WriteLine(lineaHorizontal);
+
+            foreach (var d in muestra)
+            {
+                string id = d.Id.ToString().PadRight(colId);
+                string nombre = (d.Name ?? "").PadRight(colNombre);
+                string categoria = (d.Category ?? "").PadRight(colCategoria);
+                string valor = d.Value.ToString("C0").PadLeft(colValor);
+
+                Console.WriteLine($"| {id} | {nombre} | {categoria} | {valor} |");
+            }
+
+            Console.WriteLine(lineaHorizontal);
+            Console.WriteLine($"Mostrando {muestra.Count} de {datos.Count} registros.");
         }
 
         static void MostrarGrafica()
         {
-            var grupos = lista.GroupBy(x => x.Category);
+            if (lista.Count == 0)
+            {
+                Console.WriteLine("No hay datos para graficar.");
+                return;
+            }
+
+            var grupos = lista.GroupBy(x => x.Category)
+                .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
+                .OrderByDescending(g => g.Cantidad)
+                .ToList();
+
+            int maxLabel = grupos.Max(g => (g.Categoria ?? "").Length);
+            int maxCantidad = grupos.Max(g => g.Cantidad);
+            int anchoMaxBarra = 40;
+
+            Console.WriteLine();
+            Console.WriteLine("  GRÁFICA POR CATEGORÍA");
+            Console.WriteLine($"  {new string('─', maxLabel + anchoMaxBarra + 15)}");
+
             foreach (var g in grupos)
             {
-                Console.Write(g.Key + ": ");
-                for (int i = 0; i < g.Count(); i++) Console.Write("█");
-                Console.WriteLine();
+                int longBarra = maxCantidad > 0
+                    ? (int)Math.Round((double)g.Cantidad / maxCantidad * anchoMaxBarra)
+                    : 0;
+
+                string etiqueta = (g.Categoria ?? "").PadRight(maxLabel);
+                string barra = new string('█', longBarra);
+
+                Console.WriteLine($"  {etiqueta}  {barra} ({g.Cantidad})");
             }
+
+            Console.WriteLine($"  {new string('─', maxLabel + anchoMaxBarra + 15)}");
+            Console.WriteLine($"  Total: {lista.Count} registros");
         }
 
         static void MostrarResumen()
         {
             var resumen = lista.GroupBy(x => x.Category)
-                .Select(g => new { Cat = g.Key, Total = g.Sum(x => x.Value) });
+                .Select(g => new { g.Key, Total = g.Sum(x => x.Value) });
 
             foreach (var r in resumen)
-                Console.WriteLine($"{r.Cat}: {r.Total}");
+                Console.WriteLine($"{r.Key}: {r.Total}");
         }
 
         static void MenuInsertar()
         {
-            Console.Write("Nombre: "); string n = Console.ReadLine();
-            Console.Write("Categoria: "); string c = Console.ReadLine();
-            Console.Write("Valor: "); double v = double.Parse(Console.ReadLine());
+            Console.Write("Nombre: ");
+            string n = Console.ReadLine();
+
+            Console.Write("Categoria: ");
+            string c = Console.ReadLine();
+
+            Console.Write("Valor: ");
+            double v = double.Parse(Console.ReadLine());
 
             using SqlConnection conn = new SqlConnection(connectionString);
-            string query = "INSERT INTO DataItems (Name, Category, Value) VALUES (@n, @c, @v)";
+            conn.Open();
+
+            string query = "INSERT INTO DataItems (Name, Category, Value) VALUES (@n,@c,@v)";
             using SqlCommand cmd = new SqlCommand(query, conn);
+
             cmd.Parameters.AddWithValue("@n", n);
             cmd.Parameters.AddWithValue("@c", c);
             cmd.Parameters.AddWithValue("@v", v);
 
-            conn.Open();
             cmd.ExecuteNonQuery();
+
+            Console.WriteLine("Guardado en SQL");
         }
     }
 }
